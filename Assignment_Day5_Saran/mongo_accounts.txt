@@ -1,0 +1,36 @@
+use bank_activity_db
+
+
+db.createCollection("customer_activity_logs", {
+  capped: true,
+  size: 1048576,
+  max: 500
+});
+
+db.customer_activity_logs.insertMany([
+  { customerId: "CUST_101", event: "LOGIN", ip: "103.21.45.10", device: "Android", timestamp: ISODate("2026-11-10T08:00:00Z") },
+  { customerId: "CUST_101", event: "VIEW_BALANCE", ip: "103.21.45.10", device: "Android", timestamp: ISODate("2026-11-10T08:02:00Z") },
+  { customerId: "CUST_102", event: "LOGIN", ip: "49.36.12.88", device: "iOS", timestamp: ISODate("2026-11-11T09:15:00Z") },
+  { customerId: "CUST_101", event: "LOGIN", ip: "103.21.45.10", device: "Android", timestamp: ISODate("2026-11-11T10:30:00Z") },
+  { customerId: "CUST_103", event: "LOGIN", ip: "117.192.4.12", device: "Web", timestamp: ISODate("2026-11-12T11:00:00Z") },
+  { customerId: "CUST_101", event: "TRANSFER_INIT", amount: 5000, timestamp: ISODate("2026-11-12T11:05:00Z") },
+  { customerId: "CUST_101", event: "LOGIN", ip: "103.21.45.11", device: "Web", timestamp: ISODate("2026-11-13T14:20:00Z") },
+  { customerId: "CUST_102", event: "LOGOUT", ip: "49.36.12.88", device: "iOS", timestamp: ISODate("2026-11-13T14:25:00Z") },
+  { customerId: "CUST_104", event: "LOGIN", ip: "182.74.99.2", device: "Android", timestamp: ISODate("2026-11-14T07:45:00Z") },
+  { customerId: "CUST_101", event: "LOGIN", ip: "103.21.45.10", device: "Android", timestamp: ISODate("2026-11-14T16:10:00Z") },
+  { customerId: "CUST_103", event: "STATEMENT_DOWNLOAD", format: "PDF", timestamp: ISODate("2026-11-15T09:00:00Z") },
+  { customerId: "CUST_102", event: "LOGIN", ip: "49.36.12.90", device: "Web", timestamp: ISODate("2026-11-15T12:30:00Z") },
+  { customerId: "CUST_101", event: "LOGIN", ip: "103.21.45.15", device: "iOS", timestamp: ISODate("2026-11-16T08:45:00Z") },
+  { customerId: "CUST_104", event: "PIN_CHANGE", device: "Android", timestamp: ISODate("2026-11-16T10:15:00Z") },
+  { customerId: "CUST_102", event: "LOGIN", ip: "49.36.12.90", device: "Web", timestamp: ISODate("2026-11-16T13:00:00Z") },
+  { customerId: "CUST_103", event: "LOGIN", ip: "117.192.4.12", device: "Web", timestamp: ISODate("2026-11-16T18:20:00Z") },
+  { customerId: "CUST_101", event: "LOGOUT", device: "iOS", timestamp: ISODate("2026-11-16T19:00:00Z") },
+  { customerId: "CUST_104", event: "LOGIN", ip: "182.74.99.2", device: "Android", timestamp: ISODate("2026-11-17T06:30:00Z") },
+  { customerId: "CUST_102", event: "BILL_PAY", biller: "BESCOM", timestamp: ISODate("2026-11-17T08:10:00Z") },
+  { customerId: "CUST_101", event: "LOGIN", ip: "103.21.45.10", device: "Android", timestamp: ISODate("2026-11-17T09:00:00Z") }
+]);
+
+db.customer_activity_logs
+  .find({ customerId: "CUST_101", event: "LOGIN" })
+  .sort({ $natural: -1 })
+  .limit(5);

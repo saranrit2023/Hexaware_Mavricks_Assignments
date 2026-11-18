@@ -1,0 +1,53 @@
+use telecom_usage_db
+
+db.usage_events.insertMany([
+  { subscriberId: 1, towerId: "TWR-CHN-01", eventType: "DATA", timestamp: ISODate("2026-11-17T09:15:00Z"), sessionSeconds: 420, dataMB: 150 },
+  { subscriberId: 2, towerId: "TWR-MUM-04", eventType: "DATA", timestamp: ISODate("2026-11-17T09:40:00Z"), sessionSeconds: 600, dataMB: 320 },
+  { subscriberId: 3, towerId: "TWR-CHN-01", eventType: "VOICE", timestamp: ISODate("2026-11-17T10:05:00Z"), sessionSeconds: 180, dataMB: 0 },
+  { subscriberId: 4, towerId: "TWR-CHN-01", eventType: "DATA", timestamp: ISODate("2026-11-17T10:30:00Z"), sessionSeconds: 900, dataMB: 510 },
+  { subscriberId: 6, towerId: "TWR-BLR-02", eventType: "DATA", timestamp: ISODate("2026-11-17T18:10:00Z"), sessionSeconds: 1200, dataMB: 780 },
+  { subscriberId: 7, towerId: "TWR-BLR-02", eventType: "VOICE", timestamp: ISODate("2026-11-17T18:45:00Z"), sessionSeconds: 300, dataMB: 0 }
+]);
+
+db.usage_events.aggregate([
+  {
+    $group: {
+      _id: { $hour: "$timestamp" },
+      eventCount: { $sum: 1 },
+      totalDataMB: { $sum: "$dataMB" },
+      totalDurationSecs: { $sum: "$sessionSeconds" }
+    }
+  },
+  { $sort: { _id: 1 } }
+]);
+
+db.usage_events.aggregate([
+  {
+    $group: {
+      _id: "$eventType",
+      sessionCount: { $sum: 1 },
+      avgSessionSeconds: { $avg: "$sessionSeconds" }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      eventType: "$_id",
+      sessionCount: 1,
+      avgSessionSeconds: { $round: ["$avgSessionSeconds", 2] }
+    }
+  }
+]);
+
+
+db.usage_events.aggregate([
+  {
+    $group: {
+      _id: "$towerId",
+      totalEvents: { $sum: 1 },
+      totalDataMB: { $sum: "$dataMB" }
+    }
+  },
+  { $sort: { totalEvents: -1, totalDataMB: -1 } },
+  { $limit: 1 }
+]);

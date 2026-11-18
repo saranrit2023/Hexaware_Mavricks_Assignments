@@ -1,0 +1,31 @@
+use retail_reviews_db
+
+db.createCollection("reviews", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["sku", "customerName", "rating", "comment"],
+      properties: {
+        sku: { bsonType: "string" },
+        customerName: { bsonType: "string" },
+        rating: { bsonType: "int", minimum: 1, maximum: 5 },
+        comment: { bsonType: "string" }
+      }
+    }
+  }
+});
+
+db.reviews.insertMany([
+  { sku: "SKU-101", customerName: "Arun", rating: 5, comment: "Smooth tracking and great battery life." },
+  { sku: "SKU-101", customerName: "Priya", rating: 4, comment: "Good mouse, slightly small for large hands." },
+  { sku: "SKU-102", customerName: "Vikram", rating: 2, comment: "Fabric shrank after first wash." }
+]);
+
+db.reviews.find({ sku: "SKU-101" });
+
+db.reviews.updateOne(
+  { sku: "SKU-101", customerName: "Priya" },
+  { $set: { rating: 5, comment: "Changed my mind, very comfortable!" } }
+);
+
+db.reviews.deleteOne({ sku: "SKU-102", customerName: "Vikram" });

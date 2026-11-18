@@ -1,0 +1,57 @@
+use insurance_claims_db
+
+db.claims_notes.insertMany([
+  { claimId: "CLM-01", status: "Settled", damageCategory: "Collision", filedDate: ISODate("2026-10-01"), settledDate: ISODate("2026-10-06"), adjusterNotes: "Front bumper replaced." },
+  { claimId: "CLM-02", status: "Settled", damageCategory: "Water Damage", filedDate: ISODate("2026-10-10"), settledDate: ISODate("2026-10-20"), adjusterNotes: "Pipe burst in kitchen." },
+  { claimId: "CLM-03", status: "Settled", damageCategory: "Collision", filedDate: ISODate("2026-10-15"), settledDate: ISODate("2026-10-18"), adjusterNotes: "Rear-end fender repair." },
+  { claimId: "CLM-04", status: "Pending", damageCategory: "Fire", filedDate: ISODate("2026-11-02"), settledDate: null, adjusterNotes: "Awaiting fire marshal report." },
+  { claimId: "CLM-05", status: "Rejected", damageCategory: "Theft", filedDate: ISODate("2026-11-05"), settledDate: null, adjusterNotes: "Policy lapsed prior to incident." },
+  { claimId: "CLM-06", status: "Settled", damageCategory: "Water Damage", filedDate: ISODate("2026-11-01"), settledDate: ISODate("2026-11-08"), adjusterNotes: "Roof leak repair approved." }
+]);
+
+
+db.claims_notes.aggregate([
+  {
+    $group: {
+      _id: "$status",
+      totalClaims: { $sum: 1 }
+    }
+  },
+  { $sort: { totalClaims: -1 } }
+]);
+
+
+db.claims_notes.aggregate([
+  { $match: { status: "Settled", settledDate: { $ne: null } } },
+  {
+    $project: {
+      claimId: 1,
+      damageCategory: 1,
+      settlementDays: {
+        $divide: [
+          { $subtract: ["$settledDate", "$filedDate"] },
+          1000 * 60 * 60 * 24 // Convert milliseconds to days
+        ]
+      }
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      settledCount: { $sum: 1 },
+      avgSettlementDays: { $avg: "$settlementDays" }
+    }
+  }
+]);
+
+
+db.claims_notes.aggregate([
+  {
+    $group: {
+      _id: "$damageCategory",
+      incidentCount: { $sum: 1 }
+    }
+  },
+  { $sort: { incidentCount: -1 } },
+  { $limit: 3 }
+]);

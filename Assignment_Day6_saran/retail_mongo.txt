@@ -1,0 +1,61 @@
+use retail_sales_db
+
+db.orders.insertMany([
+  { orderId: 1, orderDate: ISODate("2026-09-10"), city: "Chennai", status: "Paid", items: [{ productName: "Laptop Pro 15", qty: 1, unitPrice: 1000 }, { productName: "Mechanical Keyboard", qty: 1, unitPrice: 120 }] },
+  { orderId: 2, orderDate: ISODate("2026-09-22"), city: "Chennai", status: "Paid", items: [{ productName: "Noise-Cancel Headphones", qty: 2, unitPrice: 200 }] },
+  { orderId: 5, orderDate: ISODate("2026-09-10"), city: "Mumbai", status: "Paid", items: [{ productName: "Laptop Pro 15", qty: 2, unitPrice: 1000 }] },
+  { orderId: 7, orderDate: ISODate("2026-10-15"), city: "Bengaluru", status: "Paid", items: [{ productName: "Mechanical Keyboard", qty: 3, unitPrice: 120 }] }
+]);
+
+
+db.orders.aggregate([
+  { $match: { status: "Paid" } },
+  { $unwind: "$items" },
+  {
+    $group: {
+      _id: { $dateToString: { format: "%Y-%m", date: "$orderDate" } },
+      monthlySales: { $sum: { $multiply: ["$items.qty", "$items.unitPrice"] } },
+      totalUnits: { $sum: "$items.qty" }
+    }
+  },
+  { $sort: { _id: 1 } }
+]);
+
+db.orders.aggregate([
+  { $match: { status: "Paid" } },
+  { $unwind: "$items" },
+  {
+    $group: {
+      _id: "$items.productName",
+      unitsSold: { $sum: "$items.qty" },
+      totalRevenue: { $sum: { $multiply: ["$items.qty", "$items.unitPrice"] } }
+    }
+  },
+  { $sort: { totalRevenue: -1 } },
+  { $limit: 5 }
+]);
+
+
+db.orders.aggregate([
+  { $match: { status: "Paid" } },
+  {
+    $project: {
+      city: 1,
+      basketTotal: {
+        $reduce: {
+          input: "$items",
+          initialValue: 0,
+          in: { $add: ["$$value", { $multiply: ["$$this.qty", "$$this.unitPrice"] }] }
+        }
+      }
+    }
+  },
+  {
+    $group: {
+      _id: "$city",
+      orderCount: { $sum: 1 },
+      avgBasketValue: { $avg: "$basketTotal" }
+    }
+  },
+  { $sort: { avgBasketValue: -1 } }
+]);

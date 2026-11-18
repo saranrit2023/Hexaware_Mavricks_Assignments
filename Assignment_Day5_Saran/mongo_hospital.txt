@@ -1,0 +1,47 @@
+use hospital_clinical_db
+
+db.createCollection("clinical_notes", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["visitId", "patientId", "doctorName", "diagnosis", "recordedAt"],
+      properties: {
+        visitId: { bsonType: "int" },
+        patientId: { bsonType: "int" },
+        doctorName: { bsonType: "string" },
+        diagnosis: { bsonType: "string" },
+        recordedAt: { bsonType: "date" }
+      }
+    }
+  }
+});
+
+db.clinical_notes.insertMany([
+  // Shape A: Cardiology clinical note (includes vitals object and ECG summary)
+  {
+    visitId: 1,
+    patientId: 1,
+    doctorName: "Dr. Arvind Rao",
+    diagnosis: "Hypertension",
+    recordedAt: ISODate("2026-10-12T10:30:00Z"),
+    vitals: { bp: "150/95", heartRate: 88, spo2: 98 },
+    ecgFindings: "Normal sinus rhythm, mild LVH",
+    followUpDays: 15
+  },
+  {
+    visitId: 3,
+    patientId: 3,
+    doctorName: "Dr. Vikram Sethi",
+    diagnosis: "Knee Osteoarthritis",
+    recordedAt: ISODate("2026-11-04T14:15:00Z"),
+    affectedJoint: "Right Knee",
+    imaging: [
+      { type: "X-Ray", view: "AP/Lateral", impression: "Reduced medial joint space" }
+    ],
+    physioExercises: ["Quad sets", "Straight leg raises"]
+  }
+]);
+
+db.clinical_notes.find({ diagnosis: "Hypertension" });
+
+db.clinical_notes.find({ diagnosis: { $regex: /osteoarthritis/i } });
