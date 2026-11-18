@@ -1,0 +1,75 @@
+use bank_loan_db;
+
+db.loans.drop();
+db.customers.drop();
+db.repayments.drop();
+
+db.customers.insertMany([
+  { _id: 101, customer_name: "Aarav Mehta", credit_score: 780 },
+  { _id: 102, customer_name: "Sneha Kapoor", credit_score: 690 }
+]);
+
+db.loans.insertMany([
+  { _id: 501, customer_id: 101, branch: "Downtown Main", loan_amount: 500000, status: "Active" },
+  { _id: 503, customer_id: 102, branch: "Downtown Main", loan_amount: 900000, status: "Overdue" }
+]);
+
+db.repayments.insertMany([
+  { _id: 901, loan_id: 501, amount_paid: 25000, repayment_date: ISODate("2026-10-01") },
+  { _id: 902, loan_id: 501, amount_paid: 30000, repayment_date: ISODate("2026-11-01") },
+  { _id: 903, loan_id: 503, amount_paid: 40000, repayment_date: ISODate("2026-07-10") }
+]);
+
+
+print("--- Pipeline 1: Loans with Customer Details ---");
+printjson(
+  db.loans.aggregate([
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customer_id",
+        foreignField: "_id",
+        as: "customer_info"
+      }
+    },
+    { $unwind: "$customer_info" }
+  ]).toArray()
+);
+
+print("--- Pipeline 2: Loans with All Repayments ---");
+printjson(
+  db.loans.aggregate([
+    {
+      $lookup: {
+        from: "repayments",
+        localField: "_id",
+        foreignField: "loan_id",
+        as: "all_repayments"
+      }
+    }
+  ]).toArray()
+);
+
+print("--- Pipeline 3: Loans with Last Repayment ---");
+printjson(
+  db.loans.aggregate([
+    {
+      $lookup: {
+        from: "repayments",
+        let: { lid: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$loan_id", "$$lid"] } } },
+          { $sort: { repayment_date: -1 } },
+          { $limit: 1 }
+        ],
+        as: "last_repayment"
+      }
+    },
+    {
+      $unwind: {
+        path: "$last_repayment",
+        preserveNullAndEmptyArrays: true
+      }
+    }
+  ]).toArray()
+);

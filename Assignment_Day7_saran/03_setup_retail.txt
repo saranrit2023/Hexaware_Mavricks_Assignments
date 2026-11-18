@@ -1,0 +1,90 @@
+use retail_returns_db;
+
+db.returns.drop();
+db.returns_feedback.drop();
+db.products.drop();
+db.customers.drop();
+
+db.customers.insertMany([
+  { _id: 101, customer_name: "Karan Malhotra", city: "Delhi" },
+  { _id: 102, customer_name: "Divya Nair", city: "Kochi" }
+]);
+
+db.products.insertMany([
+  { _id: 10, product_name: "Wireless Headphones", category: "Electronics" },
+  { _id: 20, product_name: "Running Shoes", category: "Apparel" }
+]);
+
+db.returns.insertMany([
+  { _id: 501, customer_id: 101, product_id: 10, reason: "Defective", refund_amount: 5000 },
+  { _id: 502, customer_id: 102, product_id: 10, reason: "Wrong Size", refund_amount: 5000 },
+  { _id: 503, customer_id: 102, product_id: 20, reason: "Damaged Box", refund_amount: 3000 }
+]);
+
+db.returns_feedback.insertMany([
+  { feedback_id: 1, return_id: 501, rating: 4, comment: "Fast refund processing" },
+  { feedback_id: 2, return_id: 502, rating: 2, comment: "Pickup took three days" }
+]);
+
+
+
+print("--- Pipeline 1: Returns with Returns Feedback ---");
+printjson(
+  db.returns.aggregate([
+    {
+      $lookup: {
+        from: "returns_feedback",
+        localField: "_id",
+        foreignField: "return_id",
+        as: "feedback"
+      }
+    }
+  ]).toArray()
+);
+
+print("--- Pipeline 2: Returns with Product Details ---");
+printjson(
+  db.returns.aggregate([
+    {
+      $lookup: {
+        from: "products",
+        localField: "product_id",
+        foreignField: "_id",
+        as: "product_info"
+      }
+    },
+    { $unwind: "$product_info" }
+  ]).toArray()
+);
+
+print("--- Pipeline 3: Full Return Summary (Customer + Feedback) ---");
+printjson(
+  db.returns.aggregate([
+    {
+      $lookup: {
+        from: "customers",
+        localField: "customer_id",
+        foreignField: "_id",
+        as: "customer"
+      }
+    },
+    { $unwind: "$customer" },
+    {
+      $lookup: {
+        from: "returns_feedback",
+        localField: "_id",
+        foreignField: "return_id",
+        as: "feedback"
+      }
+    },
+    {
+      $project: {
+        _id: 1,
+        customer_name: "$customer.customer_name",
+        reason: 1,
+        refund_amount: 1,
+        feedback_rating: { $arrayElemAt: ["$feedback.rating", 0] }
+      }
+    }
+  ]).toArray()
+);

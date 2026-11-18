@@ -1,0 +1,80 @@
+use logistics_db;
+
+db.shipments.drop();
+db.delivery_events.drop();
+db.customers.drop();
+db.carriers.drop();
+
+db.customers.insertMany([
+  { _id: 101, customer_name: "Apex Retail", region: "North" },
+  { _id: 102, customer_name: "Zenith Electronics", region: "West" }
+]);
+
+db.carriers.insertMany([
+  { _id: 10, carrier_name: "SwiftFreight", service_tier: "Express" },
+  { _id: 20, carrier_name: "BlueDart Logistics", service_tier: "Standard" }
+]);
+
+db.shipments.insertMany([
+  { _id: 1001, customer_id: 101, carrier_id: 10, shipping_cost: 500, delay_days: 0 },
+  { _id: 1002, customer_id: 101, carrier_id: 20, shipping_cost: 750, delay_days: 4 },
+  { _id: 1005, customer_id: 102, carrier_id: 20, shipping_cost: 650, delay_days: 4 }
+]);
+
+db.delivery_events.insertMany([
+  { event_id: 1, shipment_id: 1001, status: "Picked Up", time: "2026-10-01T08:00:00Z" },
+  { event_id: 2, shipment_id: 1001, status: "Delivered", time: "2026-10-01T18:00:00Z" },
+  { event_id: 3, shipment_id: 1002, status: "Delayed at Hub", time: "2026-10-05T14:00:00Z" }
+]);
+
+
+print("--- Pipeline 1: Shipments with Delivery Events ---");
+printjson(
+  db.shipments.aggregate([
+    {
+      $lookup: {
+        from: "delivery_events",
+        localField: "_id",
+        foreignField: "shipment_id",
+        as: "events"
+      }
+    }
+  ]).toArray()
+);
+
+print("--- Pipeline 2: Customers with their Shipments ---");
+printjson(
+  db.customers.aggregate([
+    {
+      $lookup: {
+        from: "shipments",
+        localField: "_id",
+        foreignField: "customer_id",
+        as: "customer_shipments"
+      }
+    }
+  ]).toArray()
+);
+
+print("--- Pipeline 3: Carriers with Delay Statistics ---");
+printjson(
+  db.carriers.aggregate([
+    {
+      $lookup: {
+        from: "shipments",
+        localField: "_id",
+        foreignField: "carrier_id",
+        as: "carrier_shipments"
+      }
+    },
+    {
+      $project: {
+        carrier_name: 1,
+        service_tier: 1,
+        total_shipments: { $size: "$carrier_shipments" },
+        avg_delay_days: { $avg: "$carrier_shipments.delay_days" },
+        max_delay_days: { $max: "$carrier_shipments.delay_days" }
+      }
+    }
+  ]).toArray()
+);
